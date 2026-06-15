@@ -1,0 +1,17 @@
+# Rust build artifacts
+target/
+target_cmd/
+
+# Local target caches
+target-cache/
+
+# IDE and OS specific files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.rs.bk
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
