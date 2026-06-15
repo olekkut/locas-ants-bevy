@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use rand::Rng;
 use crate::interaction::{ActiveTool, ToolMode};
-use crate::systems::{DebugSettings, SimulationSpeed, TextureSettings};
+use crate::systems::{DebugSettings, SimulationSpeed, TextureSettings, SimulationFrame};
 use crate::components::*;
 use crate::grid::GRID_SIZE;
 
@@ -14,6 +14,9 @@ pub struct AntCountText;
 
 #[derive(Component)]
 pub struct SpeedText;
+
+#[derive(Component)]
+pub struct TimeCountText;
 
 #[derive(Component, Clone, Copy)]
 pub enum UiButton {
@@ -94,10 +97,27 @@ pub fn setup_ui(mut commands: Commands) {
                     },
                 )
                 .with_style(Style {
-                    margin: UiRect::bottom(Val::Px(12.0)),
+                    margin: UiRect::bottom(Val::Px(4.0)),
                     ..default()
                 }),
                 SpeedText,
+            ));
+
+            // Time Count Label
+            parent.spawn((
+                TextBundle::from_section(
+                    "Time: 0.0s",
+                    TextStyle {
+                        font: Default::default(),
+                        font_size: 16.0,
+                        color: Color::srgb(0.6, 0.8, 0.5),
+                    },
+                )
+                .with_style(Style {
+                    margin: UiRect::bottom(Val::Px(12.0)),
+                    ..default()
+                }),
+                TimeCountText,
             ));
 
             // Helper to spawn buttons
@@ -267,9 +287,11 @@ pub fn ui_update_text_system(
     debug_settings: Res<DebugSettings>,
     simulation_speed: Res<SimulationSpeed>,
     texture_settings: Res<TextureSettings>,
-    mut fps_query: Query<&mut Text, (With<FpsText>, Without<AntCountText>, Without<SpeedText>)>,
-    mut ants_text_query: Query<&mut Text, (With<AntCountText>, Without<FpsText>, Without<SpeedText>)>,
-    mut speed_text_query: Query<&mut Text, (With<SpeedText>, Without<FpsText>, Without<AntCountText>)>,
+    frame: Res<SimulationFrame>,
+    mut fps_query: Query<&mut Text, (With<FpsText>, Without<AntCountText>, Without<SpeedText>, Without<TimeCountText>)>,
+    mut ants_text_query: Query<&mut Text, (With<AntCountText>, Without<FpsText>, Without<SpeedText>, Without<TimeCountText>)>,
+    mut speed_text_query: Query<&mut Text, (With<SpeedText>, Without<FpsText>, Without<AntCountText>, Without<TimeCountText>)>,
+    mut time_text_query: Query<&mut Text, (With<TimeCountText>, Without<FpsText>, Without<AntCountText>, Without<SpeedText>)>,
     mut button_query: Query<(&UiButton, &mut BackgroundColor, &Interaction)>,
 ) {
     // 1. Update FPS Text
@@ -294,8 +316,14 @@ pub fn ui_update_text_system(
             text.sections[0].value = format!("{}x speed", simulation_speed.multiplier);
         }
     }
+
+    // 4. Update Time Count Text
+    if let Ok(mut text) = time_text_query.get_single_mut() {
+        let seconds = frame.frame_number as f32 / 60.0;
+        text.sections[0].value = format!("Time: {:.1}s", seconds);
+    }
     
-    // 4. Update Button Highlight Colors
+    // 5. Update Button Highlight Colors
     for (button_type, mut bg_color, interaction) in button_query.iter_mut() {
         let is_selected = match button_type {
             UiButton::Tool(mode) => active_tool.mode == *mode,
