@@ -58,6 +58,7 @@ fn main() {
             mesh_render_update_system,
             update_ground_visibility_system,
             update_cell_textures_system,
+            update_gizmo_config_system,
             pheromone_debug_system,
             portal_line_debug_system,
             update_frame_counter,

@@ -759,3 +759,18 @@ pub fn update_ant_material_system(
         }
     }
 }
+
+// System to dynamically configure line width of debug pheromones gizmos
+pub fn update_gizmo_config_system(
+    debug_settings: Res<DebugSettings>,
+    mut config_store: ResMut<GizmoConfigStore>,
+) {
+    if debug_settings.is_changed() {
+        let (config, _) = config_store.config_mut::<DefaultGizmoConfigGroup>();
+        if debug_settings.show_pheromones {
+            config.line_width = 5.0; // Bolder lines
+        } else {
+            config.line_width = 2.0; // Standard thickness
+        }
+    }
+}
