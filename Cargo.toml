@@ -1,8 +1,30 @@
 [package]
-name = "optimistic-carson"
-version = "0.1.0"
+name = "locas-ants-bevy"
+version = "0.3.0"
 edition = "2021"
+rust-version = "1.87"
+description = "Multi-threaded ant colony (ACO) swarm simulation in Rust and Bevy ECS - a port of piXelicidio/locas-ants"
+authors = ["Aleksander Kutycki"]
+license = "MIT"
+repository = "https://github.com/olekkut/locas-ants-bevy"
+readme = "README.md"
+keywords = ["bevy", "ecs", "simulation", "ant-colony", "swarm"]
+categories = ["simulation", "games"]
+publish = false
 
 [dependencies]
 bevy = { version = "0.14.0", features = ["multi_threaded"] }
 rand = "0.8.5"
+
+# Light optimization for our code and full optimization for dependencies,
+# so debug builds of Bevy run at a usable frame rate.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

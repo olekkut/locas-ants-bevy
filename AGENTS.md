@@ -18,23 +18,26 @@ Definiujemy następujące komponenty w pliku `components.rs` (przypisane do każ
 
 | Komponent | Typ | Opis |
 | :--- | :--- | :--- |
-| `Position` | `struct Position(pub Vec2)` | Aktualne współrzędne 2D mrówki w świecie gry. |
-| `Direction` | `struct Direction(pub Vec2)` | Znormalizowany wektor kierunku ruchu (długość = 1.0). |
-| `Speed` | `struct Speed(pub f32)` | Bieżąca prędkość mrówki. |
-| `AntState` | `struct AntState { pub looking_for: Target, pub last_time_seen_food: i64, pub last_time_seen_cave: i64, pub max_time_seen: i64 }` | Maszyna stanów mrówki: co aktualnie szuka (`Target::Food` lub `Target::Cave`) oraz metryki czasu (w klatkach) ostatniego kontaktu z celami. |
+| `AntPosition` | `struct AntPosition(pub Vec2)` | Aktualne współrzędne 2D mrówki w świecie gry. |
+| `AntDirection` | `struct AntDirection(pub Vec2)` | Znormalizowany wektor kierunku ruchu (długość = 1.0). |
+| `AntSpeed` | `struct AntSpeed(pub f32)` | Bieżąca prędkość mrówki. |
+| `AntPhysics` | `struct AntPhysics { acceleration, erratic, max_speed }` | Indywidualne parametry ruchu (przyspieszenie losowane przy tworzeniu mrówki). |
+| `AntState` | `struct AntState { looking_for, last_time_seen_food, last_time_seen_cave, max_time_seen, pheromones_write, pheromones_back_time, teleported_on_frame, traveled }` | Maszyna stanów mrówki: co aktualnie szuka (`Target::Food` lub `Target::Cave`), metryki czasu (w klatkach) ostatniego kontaktu z celami oraz blokada zapisu feromonów (cooldown po znalezieniu celu). |
 | `AntMemory` | `struct AntMemory { pub positions: [Vec2; 10], pub index: usize }` | Cykliczny bufor (Ring Buffer) przechowujący ostatnie N (10) pozycji mrówki w celu wyznaczania kierunku powrotnego feromonów. |
-| `PheromoneCooldown` | `struct PheromoneCooldown { pub write_blocked_until: u64 }` | Licznik klatek (timestamp) określający, do kiedy mrówka ma zablokowany zapis feromonów (cooldown po znalezieniu celu). |
+| `AntComNeeded` | `struct AntComNeeded { com_every, com_offset }` | Co ile klatek (i z jakim przesunięciem) mrówka komunikuje się z siatką feromonów — rozkłada koszt komunikacji w czasie. |
 
-### Definicja struktur w Rust:
+Pełne definicje znajdują się w [`src/components.rs`](src/components.rs); nowa mrówka tworzona jest funkcją `new_ant_bundle`.
+
+### Definicja kluczowych struktur w Rust:
 ```rust
 #[derive(Component)]
-pub struct Position(pub Vec2);
+pub struct AntPosition(pub Vec2);
 
 #[derive(Component)]
-pub struct Direction(pub Vec2);
+pub struct AntDirection(pub Vec2);
 
 #[derive(Component)]
-pub struct Speed(pub f32);
+pub struct AntSpeed(pub f32);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Target {
@@ -48,17 +51,16 @@ pub struct AntState {
     pub last_time_seen_food: i64,
     pub last_time_seen_cave: i64,
     pub max_time_seen: i64,
+    pub pheromones_write: bool,     // false = zapis zablokowany (cooldown)
+    pub pheromones_back_time: u64,  // klatka, od której zapis znów jest dozwolony
+    pub teleported_on_frame: u64,
+    pub traveled: f32,
 }
 
 #[derive(Component)]
 pub struct AntMemory {
     pub positions: [Vec2; 10],
     pub index: usize,
-}
-
-#[derive(Component)]
-pub struct PheromoneCooldown {
-    pub write_blocked_until: u64,
 }
 ```
 
@@ -68,9 +70,11 @@ pub struct PheromoneCooldown {
 
 W Bevy logika zachowań realizowana jest przez **Systemy (Systems)** — zwykłe funkcje w języku Rust, uruchamiane w pętli aplikacji. Systemy działają na zapytaniach (`Query`), co pozwala Bevy na ich automatyczne i w pełni bezpieczne zrównoleglenie na wątkach roboczych (worker threads).
 
+> **Implementacja:** etapy A–C opisane poniżej są w kodzie połączone w jeden system `ant_update_system` (`src/systems.rs`), który w jednym przebiegu `par_iter_mut()` wykonuje kolejno: komunikację feromonową, unikanie przeszkód, fizykę ruchu i interakcję z komórką. Dzięki temu dane każdej mrówki są odczytywane z pamięci tylko raz na krok symulacji.
+
 ### A. Fizyka Ruchu i Kolizji (`movement_system`)
 Ten system działa w oparciu o zapytanie:
-`Query<(&mut Position, &mut Direction, &mut Speed, &mut AntMemory)>`
+`Query<(&mut AntPosition, &mut AntDirection, &mut AntSpeed, &mut AntMemory, ...)>`
 Wykonuje on następujące operacje (wątki dzielą mrówki między siebie za pomocą Bevy `par_iter_mut()`):
 1. **Zapis pozycji do pamięci podręcznej**: Aktualna pozycja mrówki jest zapisywana do bufora cyklicznego `AntMemory`.
 2. **Aktualizacja prędkości**: Do prędkości dodawany jest wektor przyspieszenia (losowy dla każdej mrówki przy inicjalizacji) pomnożony przez tarcie (prędkość dąży do maksymalnej prędkości `antMaxSpeed`).
@@ -87,7 +91,7 @@ Ten system sprawdza, w której komórce siatki znajduje się obecnie mrówka:
    - Odwraca kierunek ruchu o 180 stopni (`direction = -direction`).
    - Zeruje prędkość (`speed = 0.0`), zmuszając agenta do ponownego przyspieszenia w nowym kierunku.
    - Przełącza stan na poszukiwanie **Jaskini (`Target::Cave`)**.
-   - Nakłada blokadę zapisu feromonów na kolejne 10 klatek (`PheromoneCooldown`), aby zapobiec natychmiastowemu zanieczyszczeniu śladu powrotnego w punkcie zwrotnym.
+   - Nakłada blokadę zapisu feromonów na kolejne 10 klatek (`AntState::pheromones_write` / `pheromones_back_time`), aby zapobiec natychmiastowemu zanieczyszczeniu śladu powrotnego w punkcie zwrotnym.
 2. Zbieżna logika zachodzi, gdy mrówka szukająca **Jaskini (`Target::Cave`)** dotrze do komórki typu Cave (oddaje cargo, przełącza stan na Food, obraca się o 180 stopni).
 
 ### C. Sensoryka i Unikanie Przeszkód (`object_avoidance_system`)

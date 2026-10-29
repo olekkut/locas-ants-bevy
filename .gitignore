@@ -1,16 +1,31 @@
 # Rust build artifacts
-target/
-target_cmd/
+/target/
+/target_cmd/
+/target-cache/
+*.rs.bk
+*.pdb
 
-# Local target caches
-target-cache/
+# Packaged builds (produced by CI releases)
+/dist/
+
+# Maps written at runtime with the [S] key
+/maps/saved_map.txt
+
+# Local recordings, reports and other personal working files
+*.mp4
+*.mov
+*.docx
+*.docx.bak
+*.pdf
+/Recording *
+/Screenshot *
 
 # IDE and OS specific files
 .idea/
 .vscode/
+*.code-workspace
 .DS_Store
 Thumbs.db
-*.rs.bk
 *.suo
 *.ntvs*
 *.njsproj
