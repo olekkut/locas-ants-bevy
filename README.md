@@ -13,12 +13,28 @@ Ants leave time-stamped pheromone trails on a shared grid, find food, carry it b
 short, well-used routes, with no central planner. You can draw walls, food, grass and portals while the
 simulation runs and watch the colony adapt.
 
+## Demo
+
+8,000 ants on a walled map. The colony spreads out from the cave (the blue square in flat mode), finds the
+three food sources and settles on trails that route around the walls.
+
 <p align="center">
-  <img src="docs/media/demo-trails.webp" alt="Ants converging on a trail between food and a cave" width="720">
+  <img src="docs/media/demo-textured.webp" alt="Textured mode with the pheromone overlay: ants spread from the cave and form trails to food" width="640">
+  <br><sub><b>Textured sprites + pheromone overlay</b> (2× playback speed)</sub>
 </p>
-<p align="center">
-  <img src="docs/media/screenshot-textured.jpg" alt="Textured mode with pheromone overlay, portals and walls" width="720">
-</p>
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/demo-flat-pheromones.webp" alt="Flat-color mode with the pheromone overlay showing the direction field" width="100%">
+      <br><sub><b>Flat colors + pheromones</b>: gold lines point towards food, blue lines towards the cave</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/demo-flat.webp" alt="Flat-color mode without overlay: only the ants and their trails" width="100%">
+      <br><sub><b>Flat colors, overlay off</b>: white ants are searching, yellow ants are carrying food</sub>
+    </td>
+  </tr>
+</table>
 
 ## Features
 
