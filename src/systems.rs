@@ -689,15 +689,15 @@ pub fn debug_toggle_system(
 
     let mut map_to_load = None;
     if keyboard.just_pressed(KeyCode::Digit1) || keyboard.just_pressed(KeyCode::KeyL) {
-        map_to_load = Some("maps/default.txt");
+        map_to_load = Some(BUILTIN_MAPS[0].0);
     } else if keyboard.just_pressed(KeyCode::Digit2) {
-        map_to_load = Some("maps/maze.txt");
+        map_to_load = Some(BUILTIN_MAPS[1].0);
     } else if keyboard.just_pressed(KeyCode::Digit3) {
-        map_to_load = Some("maps/bottleneck.txt");
+        map_to_load = Some(BUILTIN_MAPS[2].0);
     } else if keyboard.just_pressed(KeyCode::Digit4) {
-        map_to_load = Some("maps/split.txt");
+        map_to_load = Some(BUILTIN_MAPS[3].0);
     } else if keyboard.just_pressed(KeyCode::Digit5) {
-        map_to_load = Some("maps/saved_map.txt");
+        map_to_load = Some(SAVED_MAP_PATH);
     }
 
     if let Some(path) = map_to_load {
@@ -755,7 +755,7 @@ pub fn debug_toggle_system(
     }
 
     if keyboard.just_pressed(KeyCode::KeyS) {
-        let path = "maps/saved_map.txt";
+        let path = SAVED_MAP_PATH;
         info!("Saving current map layout to {}...", path);
         match grid.save_to_file(path) {
             Ok(_) => info!("Successfully saved current map layout!"),

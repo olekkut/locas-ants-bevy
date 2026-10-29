@@ -1,0 +1,3 @@
+# Lets bevy_embedded_assets find assets/ no matter where the target directory lives
+[env]
+BEVY_ASSET_PATH = { value = "assets", relative = true }

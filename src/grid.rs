@@ -8,6 +8,29 @@ pub const MAP_MIN_Y: f32 = -250.0;
 pub const MAP_MAX_Y: f32 = 350.0;
 pub const GRID_SIZE: f32 = 16.0;
 
+// Built-in maps are compiled into the binary, so a single executable is enough to run the simulation.
+// A file with the same path on disk (relative to the working directory) overrides the embedded copy.
+pub const DEFAULT_MAP_PATH: &str = "maps/default.txt";
+pub const SAVED_MAP_PATH: &str = "maps/saved_map.txt";
+pub const BUILTIN_MAPS: [(&str, &str); 4] = [
+    (DEFAULT_MAP_PATH, include_str!("../maps/default.txt")),
+    ("maps/maze.txt", include_str!("../maps/maze.txt")),
+    ("maps/bottleneck.txt", include_str!("../maps/bottleneck.txt")),
+    ("maps/split.txt", include_str!("../maps/split.txt")),
+];
+
+// Reads a map from disk, falling back to the embedded copy for built-in maps
+pub fn read_map_source(path: &str) -> Result<String, std::io::Error> {
+    match std::fs::read_to_string(path) {
+        Ok(content) => Ok(content),
+        Err(e) => BUILTIN_MAPS
+            .iter()
+            .find(|(builtin_path, _)| *builtin_path == path)
+            .map(|(_, content)| content.to_string())
+            .ok_or(e),
+    }
+}
+
 // Food cells are effectively infinite sources
 pub const FOOD_STORAGE: f32 = 999_999.0;
 
@@ -75,26 +98,12 @@ pub struct SwarmGrid {
 
 impl SwarmGrid {
     pub fn new() -> Self {
-        // Ensure the maps/ directory exists
-        let _ = std::fs::create_dir_all("maps");
-
         let mut grid = Self {
             cells: Self::generate_default_cells(),
         };
 
-        let default_path = "maps/default.txt";
-        if std::path::Path::new(default_path).exists() {
-            if let Err(e) = grid.load_from_file(default_path) {
-                eprintln!(
-                    "Failed to load default map file: {}. Falling back to programmatic setup.",
-                    e
-                );
-            }
-        } else {
-            // Write the generated default map layout to default.txt
-            if let Err(e) = grid.save_to_file(default_path) {
-                eprintln!("Failed to save default map file: {}", e);
-            }
+        if let Err(e) = grid.load_from_file(DEFAULT_MAP_PATH) {
+            eprintln!("Failed to load default map: {}. Falling back to programmatic setup.", e);
         }
 
         grid
@@ -224,12 +233,15 @@ impl SwarmGrid {
             }
             map_str.push('\n');
         }
+        if let Some(parent) = std::path::Path::new(filepath).parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::write(filepath, map_str)
     }
 
     // Load grid layout from an ASCII Art text file
     pub fn load_from_file(&mut self, filepath: &str) -> Result<(), std::io::Error> {
-        let content = std::fs::read_to_string(filepath)?;
+        let content = read_map_source(filepath)?;
         self.load_from_str(&content)
             .map_err(|e| std::io::Error::new(e.kind(), format!("{}: {}", filepath, e)))
     }
@@ -398,6 +410,20 @@ mod tests {
             assert_eq!(a.passable, b.passable);
         }
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn builtin_maps_are_valid() {
+        for (path, content) in BUILTIN_MAPS {
+            let mut grid = default_grid();
+            grid.load_from_str(content)
+                .unwrap_or_else(|e| panic!("{}: {}", path, e));
+            assert!(
+                grid.cells.iter().any(|c| c.cell_type == GridCellType::Cave),
+                "{} has no cave",
+                path
+            );
+        }
     }
 
     #[test]

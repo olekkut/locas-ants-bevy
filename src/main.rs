@@ -1,3 +1,5 @@
+// Release builds on Windows run as a GUI app without a console window
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 // Bevy systems naturally take many parameters and nested query types
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
@@ -11,8 +13,11 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy::render::mesh::PrimitiveTopology;
 use bevy::render::render_asset::RenderAssetUsages;
+use bevy::render::settings::{RenderCreation, WgpuSettings};
 use bevy::render::texture::{ImageAddressMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor};
+use bevy::render::RenderPlugin;
 use bevy::sprite::Mesh2dHandle;
+use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
 
 use crate::components::*;
 use crate::grid::*;
@@ -23,18 +28,39 @@ use crate::ui::*;
 // Number of ants spawned at startup
 const INITIAL_ANTS: usize = 4_000;
 
+// Graphics backend settings; WGPU_BACKEND in the environment still takes precedence
+fn wgpu_settings() -> WgpuSettings {
+    let mut settings = WgpuSettings::default();
+    // DirectX 12 is the most reliable backend on Windows (Vulkan can deadlock on some drivers)
+    if cfg!(windows) && std::env::var_os("WGPU_BACKEND").is_none() {
+        settings.backends = Some(bevy::render::settings::Backends::DX12);
+    }
+    settings
+}
+
 fn main() {
     App::new()
+        // Serve assets/ from data compiled into the executable, so the binary runs on its own
+        .add_plugins(EmbeddedAssetPlugin {
+            mode: PluginMode::ReplaceDefault,
+        })
         // Initialize Bevy with default plugins and window config
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Locas-Ants Bevy - ant colony simulation".to_string(),
-                resolution: (1280.0_f32, 720.0_f32).into(),
-                present_mode: bevy::window::PresentMode::AutoVsync,
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Locas-Ants Bevy - ant colony simulation".to_string(),
+                        resolution: (1280.0_f32, 720.0_f32).into(),
+                        present_mode: bevy::window::PresentMode::AutoVsync,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(RenderPlugin {
+                    render_creation: RenderCreation::Automatic(wgpu_settings()),
+                    ..default()
+                }),
+        )
         // Diagnostics for real-time FPS reporting
         .add_plugins(FrameTimeDiagnosticsPlugin)
         // Dark background color resource

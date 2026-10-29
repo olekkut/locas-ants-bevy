@@ -53,7 +53,20 @@ three food sources and settles on trails that route around the walls.
 - **Runtime controls.** Spawn or remove ants, change the simulation speed (pause to 8×), zoom and pan, and toggle
   the pheromone overlay and textures.
 
-## Getting started
+## Download
+
+Grab the latest build from the [**Releases page**](https://github.com/olekkut/locas-ants-bevy/releases/latest).
+Each download is a single file with all sprites and built-in maps compiled in, so there is nothing to install.
+
+| OS                                | File                     | How to run |
+| :-------------------------------- | :----------------------- | :--------- |
+| Windows 10/11 (x64)               | `*-windows-x86_64.exe`   | Double-click it. If SmartScreen warns, choose *More info → Run anyway*. |
+| macOS 11+ (Apple Silicon & Intel) | `*-macos-universal.zip`  | Unzip and open *Locas-Ants Bevy.app*. The first time, right-click → *Open*, because the app is not notarized. |
+| Linux (x64, glibc 2.35+)          | `*-linux-x86_64.tar.gz`  | `tar -xzf` the archive, then run `./locas-ants-bevy`. |
+
+The binaries are not code-signed, which is why Windows and macOS ask for confirmation on first launch.
+
+## Building from source
 
 Install the Rust toolchain from [rustup.rs](https://rustup.rs), then:
 
@@ -63,12 +76,13 @@ cd locas-ants-bevy
 cargo run --release
 ```
 
-Prebuilt Windows, Linux and macOS packages are attached to each
-[GitHub release](https://github.com/olekkut/locas-ants-bevy/releases).
+The binary embeds `assets/` and the built-in maps, so `target/release/locas-ants-bevy(.exe)` can be copied
+anywhere and run on its own.
 
 ### Windows
 
-Double-click `build_and_run.bat`. It uses the DirectX 12 backend, which is the most reliable choice on Windows.
+Double-click `build_and_run.bat`. The app uses DirectX 12 by default, the most reliable backend on Windows.
+Set `WGPU_BACKEND` (for example `vulkan`) to override it.
 
 ### macOS
 
@@ -76,7 +90,7 @@ Works out of the box on Metal: `./build_and_run.sh` or `cargo run --release`.
 
 ### Linux
 
-Bevy needs a few system packages:
+Building needs a few system packages:
 
 | Distribution    | Command |
 | :-------------- | :------ |
@@ -124,7 +138,9 @@ Pick a tool in the sidebar, then left-click or drag on the map.
 
 ## Maps
 
-Maps are plain-text 61×43 grids in the `maps/` directory, read top row first:
+Maps are plain-text 61×43 grids, read top row first. The four maps in [`maps/`](maps) are compiled into the
+binary. A file with the same name in a `maps/` folder next to where you run the app overrides the built-in copy,
+so you can edit maps without rebuilding. `S` writes `maps/saved_map.txt` and creates the folder if needed.
 
 | Char | Cell          |
 | :--: | :------------ |
@@ -136,8 +152,7 @@ Maps are plain-text 61×43 grids in the `maps/` directory, read top row first:
 | `P`  | Blue portal   |
 | `p`  | Orange portal |
 
-If `maps/default.txt` is missing, it is generated on first launch. A malformed map is rejected as a whole, and the
-current map stays loaded.
+A malformed map is rejected as a whole, and the current map stays loaded.
 
 ## How it works
 
@@ -178,7 +193,8 @@ cargo test               # grid / pheromone / map I/O unit tests
 ```
 
 Debug builds compile dependencies with `opt-level = 3`, so `cargo run` stays fast enough to use. CI runs
-formatting, Clippy and tests on Linux, Windows and macOS. Pushing a `v*` tag builds release packages.
+formatting, Clippy and tests on Linux, Windows and macOS. Pushing a `v*` tag builds the single-file binaries
+and publishes them as a GitHub release ([`release.yml`](.github/workflows/release.yml)).
 
 ## Credits
 

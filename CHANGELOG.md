@@ -5,6 +5,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.3.0] - 2026-10-29
 
+### Distribution
+- Sprites (`assets/`) and the four built-in maps are compiled into the executable, so a single file runs anywhere.
+  A `maps/*.txt` file on disk still overrides the built-in copy.
+- Releases publish a Windows `.exe`, a universal macOS `.app` (Apple Silicon and Intel) and a Linux binary, plus SHA-256 checksums.
+- Windows release builds open without a console window and use DirectX 12 by default; `WGPU_BACKEND` overrides it.
+- The app no longer creates a `maps/` folder at startup; it is only created when saving with `S`.
+
 ### Fixed
 - Never-written pheromone cells (timestamp 0) no longer attract freshly spawned ants towards the bottom-left map corner.
 - A malformed map file is rejected as a whole instead of leaving the grid half-loaded.
